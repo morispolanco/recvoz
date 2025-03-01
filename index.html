@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reconocimiento de Voz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'media',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#5D5CDE',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        :root {
+            --primary-color: #5D5CDE;
+            --text-dark: #333;
+            --text-light: #fff;
+            --bg-light: #fff;
+            --bg-dark: #181818;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .animate-pulse-custom {
+            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: var(--bg-dark);
+                color: var(--text-light);
+            }
+        }
+        
+        @media (prefers-color-scheme: light) {
+            body {
+                background-color: var(--bg-light);
+                color: var(--text-dark);
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 sm:p-6">
+    <div class="max-w-3xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-2xl sm:text-3xl font-bold mb-2 dark:text-white">Reconocimiento de Voz</h1>
+            <p class="text-gray-600 dark:text-gray-300">Habla en español y vea el texto reconocido con puntuación</p>
+        </header>
+        
+        <main>
+            <div class="mb-6">
+                <div class="flex flex-wrap justify-center gap-3 mb-5">
+                    <button id="startBtn" class="flex items-center justify-center gap-2 bg-primary text-white px-4 py-2 rounded-lg shadow-sm hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                        </svg>
+                        Iniciar Grabación
+                    </button>
+                    <button id="stopBtn" class="flex items-center justify-center gap-2 bg-gray-500 text-white px-4 py-2 rounded-lg shadow-sm hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 transition-all" disabled>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                        </svg>
+                        Detener Grabación
+                    </button>
+                </div>
+                
+                <div id="statusIndicator" class="text-center mb-4 hidden">
+                    <div class="flex items-center justify-center gap-2 text-primary">
+                        <span id="statusDot" class="h-3 w-3 bg-primary rounded-full animate-pulse-custom"></span>
+                        <span id="statusText">Escuchando...</span>
+                    </div>
+                </div>
+                
+                <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 mb-4">
+                    <div class="p-4">
+                        <textarea id="outputText" class="w-full h-48 sm:h-64 p-2 text-base bg-transparent resize-none focus:outline-none dark:text-white" placeholder="El texto reconocido aparecerá aquí..." readonly></textarea>
+                    </div>
+                </div>
+                
+                <div class="flex flex-wrap justify-center gap-3">
+                    <button id="copyBtn" class="flex items-center justify-center gap-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white px-4 py-2 rounded-lg shadow-sm hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-600 focus:ring-opacity-50 transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                        </svg>
+                        Copiar Texto
+                    </button>
+                    <button id="clearBtn" class="flex items-center justify-center gap-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white px-4 py-2 rounded-lg shadow-sm hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-600 focus:ring-opacity-50 transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Borrar Texto
+                    </button>
+                </div>
+            </div>
+            
+            <div id="notification" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 dark:bg-gray-700 text-white px-4 py-2 rounded-lg shadow-lg opacity-0 transition-opacity duration-300">
+                Texto copiado al portapapeles
+            </div>
+            
+            <div id="errorMessage" class="hidden mt-6 p-4 bg-red-100 dark:bg-red-900 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-200 rounded-lg">
+                <p class="text-center text-sm sm:text-base"></p>
+            </div>
+        </main>
+        
+        <footer class="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
+            <p>Para mejores resultados, habla clara y pausadamente.</p>
+        </footer>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Elementos del DOM
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const copyBtn = document.getElementById('copyBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const outputText = document.getElementById('outputText');
+            const statusIndicator = document.getElementById('statusIndicator');
+            const notification = document.getElementById('notification');
+            const errorMessage = document.getElementById('errorMessage');
+            const errorText = errorMessage.querySelector('p');
+            
+            // Comprobación de compatibilidad
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            let recognition;
+            
+            if (!SpeechRecognition) {
+                startBtn.disabled = true;
+                startBtn.classList.add('bg-gray-400');
+                startBtn.classList.remove('bg-primary', 'hover:bg-opacity-90');
+                
+                errorText.textContent = 'Tu navegador no soporta el reconocimiento de voz. Por favor, intenta con Chrome, Edge o Safari.';
+                errorMessage.classList.remove('hidden');
+                return;
+            }
+            
+            // Inicializar el reconocimiento de voz
+            function initSpeechRecognition() {
+                recognition = new SpeechRecognition();
+                recognition.lang = 'es-ES';
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                
+                // Evento que se dispara cuando se recibe un resultado de reconocimiento
+                recognition.onresult = (event) => {
+                    let finalTranscript = '';
+                    
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        if (event.results[i].isFinal) {
+                            // Aplicar correcciones para mejorar la puntuación
+                            let transcript = event.results[i][0].transcript;
+                            
+                            // Capitalizar la primera letra de cada oración
+                            transcript = transcript.replace(/(^\s*\w|[.!?]\s*\w)/g, match => match.toUpperCase());
+                            
+                            // Asegurar un punto al final si no hay otro signo de puntuación
+                            if (!transcript.trim().match(/[.!?]$/)) {
+                                transcript = transcript.trim() + '.';
+                            }
+                            
+                            finalTranscript = transcript;
+                        }
+                    }
+                    
+                    if (finalTranscript) {
+                        // Añadir espacio si ya hay texto y no termina con un salto de línea
+                        if (outputText.value && !outputText.value.endsWith('\n')) {
+                            outputText.value += ' ';
+                        }
+                        
+                        outputText.value += finalTranscript;
+                    }
+                };
+                
+                // Evento que se dispara cuando termina el reconocimiento
+                recognition.onend = () => {
+                    // Si el botón de detener está habilitado, significa que debería seguir escuchando
+                    if (!stopBtn.disabled) {
+                        recognition.start();
+                    } else {
+                        statusIndicator.classList.add('hidden');
+                        startBtn.disabled = false;
+                        stopBtn.disabled = true;
+                    }
+                };
+                
+                // Evento que se dispara cuando hay un error
+                recognition.onerror = (event) => {
+                    console.error('Error de reconocimiento:', event.error);
+                    
+                    let errorMsg = 'Ha ocurrido un error con el reconocimiento de voz.';
+                    
+                    if (event.error === 'no-speech') {
+                        errorMsg = 'No se detectó ninguna voz. Por favor, intenta de nuevo.';
+                    } else if (event.error === 'audio-capture') {
+                        errorMsg = 'No se pudo acceder al micrófono. Verifica los permisos.';
+                    } else if (event.error === 'not-allowed') {
+                        errorMsg = 'El permiso para usar el micrófono fue denegado.';
+                    }
+                    
+                    errorText.textContent = errorMsg;
+                    errorMessage.classList.remove('hidden');
+                    
+                    statusIndicator.classList.add('hidden');
+                    startBtn.disabled = false;
+                    stopBtn.disabled = true;
+                };
+            }
+            
+            // Iniciar grabación
+            startBtn.addEventListener('click', () => {
+                errorMessage.classList.add('hidden');
+                
+                if (!recognition) {
+                    initSpeechRecognition();
+                }
+                
+                try {
+                    recognition.start();
+                    statusIndicator.classList.remove('hidden');
+                    startBtn.disabled = true;
+                    stopBtn.disabled = false;
+                } catch (error) {
+                    console.error('Error al iniciar el reconocimiento:', error);
+                    
+                    // Si hay un error al iniciar, reiniciar el reconocimiento
+                    recognition = null;
+                    initSpeechRecognition();
+                    
+                    try {
+                        recognition.start();
+                        statusIndicator.classList.remove('hidden');
+                        startBtn.disabled = true;
+                        stopBtn.disabled = false;
+                    } catch (secondError) {
+                        errorText.textContent = 'No se pudo iniciar el reconocimiento de voz. Intenta recargar la página.';
+                        errorMessage.classList.remove('hidden');
+                    }
+                }
+            });
+            
+            // Detener grabación
+            stopBtn.addEventListener('click', () => {
+                if (recognition) {
+                    recognition.stop();
+                    statusIndicator.classList.add('hidden');
+                    startBtn.disabled = false;
+                    stopBtn.disabled = true;
+                }
+            });
+            
+            // Copiar texto
+            copyBtn.addEventListener('click', () => {
+                if (!outputText.value) return;
+                
+                try {
+                    navigator.clipboard.writeText(outputText.value).then(() => {
+                        // Mostrar notificación
+                        notification.style.opacity = '1';
+                        setTimeout(() => {
+                            notification.style.opacity = '0';
+                        }, 2000);
+                    });
+                } catch (err) {
+                    // Método alternativo de copia para navegadores que no soportan clipboard API
+                    outputText.select();
+                    document.execCommand('copy');
+                    
+                    // Mostrar notificación
+                    notification.style.opacity = '1';
+                    setTimeout(() => {
+                        notification.style.opacity = '0';
+                    }, 2000);
+                }
+            });
+            
+            // Borrar texto
+            clearBtn.addEventListener('click', () => {
+                outputText.value = '';
+            });
+        });
+    </script>
+</body>
+</html>

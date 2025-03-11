@@ -76,12 +76,6 @@
                         </svg>
                         Detener Grabación
                     </button>
-                    <button id="correctBtn" class="flex items-center justify-center gap-2 bg-yellow-500 text-white px-4 py-2 rounded-lg shadow-sm hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50 transition-all">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
-                        Corregir Texto
-                    </button>
                 </div>
                 <div id="statusIndicator" class="text-center mb-4 hidden">
                     <div class="flex items-center justify-center gap-2 text-primary">
@@ -127,7 +121,6 @@
             const stopBtn = document.getElementById('stopBtn');
             const copyBtn = document.getElementById('copyBtn');
             const clearBtn = document.getElementById('clearBtn');
-            const correctBtn = document.getElementById('correctBtn');
             const outputText = document.getElementById('outputText');
             const statusIndicator = document.getElementById('statusIndicator');
             const notification = document.getElementById('notification');
@@ -145,6 +138,74 @@
                 errorText.textContent = 'Tu navegador no soporta el reconocimiento de voz. Por favor, intenta con Chrome, Edge o Safari.';
                 errorMessage.classList.remove('hidden');
                 return;
+            }
+
+            // Temporizador para detectar inactividad
+            let inactivityTimer;
+
+            function resetInactivityTimer() {
+                clearTimeout(inactivityTimer);
+                inactivityTimer = setTimeout(() => {
+                    correctTextAutomatically();
+                }, 3000); // 3 segundos de inactividad
+            }
+
+            // Función para corregir el texto automáticamente
+            async function correctTextAutomatically() {
+                const originalText = outputText.value.trim();
+                if (!originalText) return;
+
+                try {
+                    const correctedText = await correctText(originalText);
+                    if (correctedText) {
+                        outputText.value = correctedText;
+                    }
+                } catch (error) {
+                    console.error('Error al corregir el texto:', error);
+                    errorText.textContent = 'No se pudo corregir el texto. Inténtalo de nuevo.';
+                    errorMessage.classList.remove('hidden');
+                }
+            }
+
+            // Función para corregir el texto usando OpenRouter
+            async function correctText(text) {
+                const url = 'https://openrouter.ai/api/v1/chat/completions';
+                const apiKey = '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'; // Reemplaza con tu clave API
+
+                const requestBody = {
+                    model: "amazon/nova-lite-v1", // Cambia al modelo deseado si es necesario
+                    messages: [
+                        {
+                            role: "user",
+                            content: text
+                        }
+                    ]
+                };
+
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        },
+                        body: JSON.stringify(requestBody)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Error HTTP: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    const correctedText = data.choices[0].message.content;
+
+                    return correctedText;
+                } catch (error) {
+                    console.error('Error al corregir el texto:', error);
+                    errorText.textContent = 'No se pudo corregir el texto. Inténtalo de nuevo.';
+                    errorMessage.classList.remove('hidden');
+                    return null;
+                }
             }
 
             // Inicializar el reconocimiento de voz
@@ -171,6 +232,7 @@
                             outputText.value += ' ';
                         }
                         outputText.value += finalTranscript;
+                        resetInactivityTimer(); // Reiniciar el temporizador de inactividad
                     }
                 };
 
@@ -262,69 +324,6 @@
             // Borrar texto
             clearBtn.addEventListener('click', () => {
                 outputText.value = '';
-            });
-
-            // Función para corregir el texto usando OpenRouter
-            async function correctText(text) {
-                const url = 'https://openrouter.ai/api/v1/chat/completions';
-                const apiKey = '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'; // Reemplaza con tu clave API
-
-                const requestBody = {
-                    model: "amazon/nova-lite-v1", // Cambia al modelo deseado si es necesario
-                    messages: [
-                        {
-                            role: "user",
-                            content: text
-                        }
-                    ]
-                };
-
-                try {
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${apiKey}`
-                        },
-                        body: JSON.stringify(requestBody)
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`Error HTTP: ${response.status}`);
-                    }
-
-                    const data = await response.json();
-                    const correctedText = data.choices[0].message.content;
-
-                    return correctedText;
-                } catch (error) {
-                    console.error('Error al corregir el texto:', error);
-                    errorText.textContent = 'No se pudo corregir el texto. Inténtalo de nuevo.';
-                    errorMessage.classList.remove('hidden');
-                    return null;
-                }
-            }
-
-            // Evento para el botón "Corregir Texto"
-            correctBtn.addEventListener('click', async () => {
-                const originalText = outputText.value.trim();
-                if (!originalText) {
-                    errorText.textContent = 'No hay texto para corregir.';
-                    errorMessage.classList.remove('hidden');
-                    return;
-                }
-
-                errorMessage.classList.add('hidden');
-                correctBtn.disabled = true;
-
-                try {
-                    const correctedText = await correctText(originalText);
-                    if (correctedText) {
-                        outputText.value = correctedText;
-                    }
-                } finally {
-                    correctBtn.disabled = false;
-                }
             });
         });
     </script>
